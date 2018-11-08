@@ -111,24 +111,84 @@ modefunction <- function(dataset, col_name){
 
 modefunction(gapminder, gapminder$continent)
 ```
+```{r set up country data as a test vector input}
+countrytest<- select(gapminder, country) %>% 
+  as.vector() %>% 
+  group_by(country)
 
-```{r none of this is working}
-
-
-
-
-gapminder %>% 
-  group_by(continent) %>%
-  count(.) %>% 
-  .[which.max(.$count),]
-
- # summarise(count = length(.)) %>%
-#  .[which.max(.$count),]
-
-#gapgroup
+countrytest
 ```
 
-```{r trying to take grouping out of function}
+```{r set up data as a vector input}
+cont<- select(gapminder, continent) %>% 
+  as.vector() %>% 
+  group_by(continent)
+
+cont
+```
+
+```{r}
+
+# counts all categories, returns all rows with maximum count value
+# tested with min
+
+count(cont) %>%
+  as.data.frame() %>% 
+  filter(n == max(n))
+
+```
+
+```{r}
+
+modefunction <- function(dataset){
+  require("dplyr")
+  count(dataset) %>%
+  as.data.frame() %>% 
+  filter(n == max(n)) %>% 
+  select(-n) -> most
+  return(most)
+}
+
+
+modefunction(cont)
+```
+
+
+```{r doesn't work}
+# returns the count of the mode
+count(cont) %>%
+  as.data.frame() %>% 
+  select(max(n)) %>% 
+  max() %>% 
+  as.numeric()
+
+
+```
+
+```{r not the one}
+
+# counts each type and adds column n with count, then converts to data frame, then sort descending
+count(cont) %>% 
+  as.data.frame() %>%
+  as.numeric(n) %>% 
+  .[order(., -n),]
+
+  #was working but now isn't, not sure what got changed  .[order(-n),]
+
+# mtcars[order(mpg, -cyl),] 
+  
+# .[with(.,order(-n),)]
+
+#[order(byDayTime$count),][1:10,]
+
+# cont[order(-n),]
+
+# summarise(cont, count = length(n)) %>%
+#   cont[which.max(n),]
+
+```
+
+```{r trying to take grouping out of function but always returns first entry}
 
 gapgroup <- gapminder %>% 
   group_by(continent)
@@ -149,9 +209,6 @@ contin <- as.factor(gapminder$continent)
 ```
 
 
-```{r}
-count(contin)
-```
 
 
 # Quadratic Regression
