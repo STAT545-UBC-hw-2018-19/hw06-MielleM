@@ -74,7 +74,7 @@ max(countcountry)
 
 
 ```{r with hard coding}
-
+# Sanity check: works with min as well 
 DF <- gapminder %>% 
   group_by(continent) %>% 
   summarise(count = length(continent)) %>%
@@ -114,20 +114,28 @@ modefunction(gapminder, gapminder$continent)
 
 ```{r none of this is working}
 
-gapgroup <- gapminder %>% 
-  group_by(continent)
 
-summarise(gapminder, count = length(continent))
 
+
+gapminder %>% 
+  group_by(continent) %>%
+  count(.) %>% 
+  .[which.max(.$count),]
+
+ # summarise(count = length(.)) %>%
+#  .[which.max(.$count),]
+
+#gapgroup
 ```
 
 ```{r trying to take grouping out of function}
 
+gapgroup <- gapminder %>% 
+  group_by(continent)
 
 modefunction <- function(dataset){
   require("dplyr")
-  dataset %>% 
-    summarise(count = length(dataset)) %>%
+    summarise(dataset, count = length(dataset)) %>%
     .[which.max(.$count),] -> most
   return(most)
 }
@@ -137,7 +145,12 @@ modefunction(gapgroup)
 ```
 
 ```{r}
-contin <- gapminder$continent
+contin <- as.factor(gapminder$continent)
+```
+
+
+```{r}
+count(contin)
 ```
 
 
@@ -245,28 +258,75 @@ Ok, we have 124 columns-- clearly too many to work with.
 Based on the column titles and responses from the first few columns, it seems like the columns mostly contain either opinions about candy (or other halloween trick-or-treating offerables), degrees of separation from various celebrities/historical figures, the answers to open-ended questions, and c couple "demographic" columns-- age and trick or treating behavior. 
 
 
-Is the response rate of candy types correlated with number of positive or negative responses? 
+I'd like to see if the number of DESPAIR responses to candy types is correlated with the number of non-responses. My theory is that people will probably put JOY if they like a candy, but if they don't feel super strong dislike, they won't respond at all-- so the Non-responses probably indicate a negative feeling toward the candy. 
 
 ### wrangling 
 
+I had some trouble visualizing the steps I would need to take, so I created the following four tables to approximate what my work flow will be. 
 
+1) Currently, the data structure approximates this table below: 
+
+candy | candy | question | question |  
+------|-------|----------|----------|
+opinion | opinion | response | response
+opinion | opinion | response | response
+
+2) First, I'll need to make a "tidy" table of the data, where each row corresponds to one entry. 
+
+candy | opinion
+------|-------
+candy | JOY 
+candy | DESPAIR
+candy | DESPAIR 
+candy | NA
+
+3) Then, I'll have to "untidy" this table by collapsing identical candy opinions and adding a "count" field. 
+
+candy | opinion | count |
+------|---------|-------
+candy | JOY | count
+candy | DESPAIR | count
+candy | DESPAIR | count 
+candy | NA | count
+
+4) Finally, in order to plot, I'll `spread` opinion column to give me a table I can use to make a scatter plot. 
+
+candy | joy | despair | - |
+------|-----|---------|---
+candy type | count | count | count
+candy type | count | count | count
 I'm going to set the candy data into a tibble, and use `levels()` to check out the possible entries in the candy column. 
 
 I used `str()` to look at the data types for each column, but the output is way too long to include in the code. All the columns are factors. Conveniently, the candy columns all begin with "X"
 
 ```{r make tibble from Candy df}
 candysurvtib <- as.tibble(candysurvey) 
-
 ```
 
-now, I'll use `grepl()` to select only column names that contain "X"
+Now, I'll use `grepl()` to select only column names that contain "X"
 
 ```{r use grepl to get candy columns only}
-candyX <- candysurvtib[ , grepl( "X" , names( candysurvtib ) ) ]
+Xcolumns <- candysurvtib[ , grepl( "X", names( candysurvtib ) ) ]
 
-# COUNT NUMBER OF COLUMNS (candyX)
 ```
 
+I'll also use `select()` to remove the one column that isn't candy. 
+
+```{r removing column}
+
+candyX <- select(Xcolumns, -"X.That.dress..that.went.viral.early.this.year...when.I.first.saw.it..it.was.________.")
+
+```
+
+I'm going to change the NA values to "NoResponse", so I can work with them later
+
+```{r Change NA values to "NoResponse"}
+
+# change NA to a value 
+candyX[] <- lapply(candyX, as.character)
+candyX[is.na(candyX)] <- "NoResponse"
+
+```
 
 
 ```{r gather candy type into a column}
@@ -276,100 +336,62 @@ head(candytidy)
 ```
 
 
+```{r create untidy table}
+candyuntidy <- gather(candytidy) %>% 
+  group_by(key, value) %>% 
+  summarise(count = n()) %>%
+  spread(key = "value", value = "count")
 
-
-```{r}
-
-candytidy %>% 
-  group_by(key) %>% 
-  summarise()
-
-
-#spread(candytidy, key = "key", value = "value")
+head(candyuntidy)
 ```
 
 
-
-
-Looks like we still have a ton of columns! Let's get that down even more by selecting only my favorites.
-I like some pretty weird candy, so I think some of these might have a lot of despair values!
-
-At this stage, I'd also like to change the NA values to something I can work with. 
-
-```{r creating table of desired candy}
-candy <- candyX %>% 
-  select(c(butterfingers = X.Butterfinger.,
-           licorice = X.Licorice.,
-           peanutcups = X.Reese?..s.Peanut.Butter.Cups.,
-           skittles = X.Skittles.,
-           necco = X.Necco.Wafers.,
-           candycorn = X.Candy.Corn.)) 
-
-head(candy) %>% 
-  kable()
-
+```{r Scatter plot of candy}
+candyuntidy %>% 
+  ggplot() +
+  geom_point(aes(NoResponse, DESPAIR))
 ```
 
-
-
-```{r check levels of column in candy table}
-levels(candy$butterfingers)
-
-```
-
-Looks like the possible levels for candy columns are "DESPAIR" and "JOY", as well as some NA values. I'd like to change the NA values to something I can work with. 
-
-
-```{r}
-candy[] <- lapply(candy, as.character)
-candy[is.na(candy)] <- "NoResponse"
-
-```
-
-```{r}
-head(candy)
-```
 
 
 
 ### exploring/analyzing 
 
+Currently, the data structure approximates this table below: 
 
-```{r}
-spread(candy, key = "butterfingers", value = "")
-```
+candy | candy | question | question |  
+------|-------|----------|----------|
+opinion | opinion | response | response
+opinion | opinion | response | response
 
+First, I'll need to make a "tidy" table of the data, where each row corresponds to one entry. 
 
+candy | opinion
+------|-------
+candy | JOY 
+candy | DESPAIR
+candy | DESPAIR 
+candy | NA
 
-Create untidy table with: 
+Then, I'll have to "untidy" this table by collapsing identical candy opinions and adding a "count" field. 
+
+candy | opinion | count |
+------|---------|-------
+candy | JOY | count
+candy | DESPAIR | count
+candy | DESPAIR | count 
+candy | NA | count
+
+Finally, in order to plot, I'll `spread` opinion column to give me a table I can use to make a scatter plot. 
 
 candy | joy | despair | - |
-------|-----|---------|---|
+------|-----|---------|---
 candy type | count | count | count
 candy type | count | count | count
 
 
 
 
-```{r}
-candycount <- candy %>%
-  group_by(candytype)
-  count()
-
-candycount
-```
-
-
-```{r butterfingers bar graph}
-candy %>% 
-  ggplot(aes(butterfingers)) +
-  geom_bar()
-```
-
-
-```{r}
-chisq.test(candy)
-```
 
 ### more?
 
@@ -397,7 +419,7 @@ chisq.test(candy)
 [select rows with max count](https://stackoverflow.com/questions/19449615/how-to-extract-the-row-with-min-or-max-values)
 
 [using column names in functions](https://www.brodrigues.co/blog/2016-07-18-data-frame-columns-as-arguments-to-dplyr-functions/)
-
+[summarise](https://www.rdocumentation.org/packages/dplyr/versions/0.7.7/topics/summarise)
 
 
 
