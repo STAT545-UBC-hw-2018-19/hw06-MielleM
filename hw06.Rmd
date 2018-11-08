@@ -1,0 +1,419 @@
+---
+title: "hw06"
+author: "Mielle"
+date: "November 1, 2018"
+output: github_document
+keep_toc: true
+---
+
+```{r getting started}
+
+library(gapminder)
+library(tidyverse)
+library(kableExtra)
+```
+
+
+# singer data
+```{r INSTRUCTIONS for SINGER}
+# 4. Work with the singer data
+#The singer_location dataframe in the singer package contains geographical information stored in two different formats: 1. as a (dirty!) variable named city; 2. as a latitude / longitude pair (stored in latitude, longitude respectively). The function revgeocode from the ggmap library allows you to retrieve some information for a pair (vector) of longitude, latitude (warning: notice the order in which you need to pass lat and long). Read its manual page.
+
+U#se purrr to map latitude and longitude into human readable information on the band’s origin places. Notice that revgeocode(... , output = "more") outputs a dataframe, while revgeocode(... , output = "address") returns a string: you have the option of dealing with nested dataframes.
+#You will need to pay attention to two things:
+#Not all of the track have a latitude and longitude: what can we do with the missing information? (filtering, …)
+#Not all of the time we make a research through revgeocode() we get a result. What can we do to avoid those errors to bite us? (look at possibly() in purrr…)
+#Try to check wether the place in city corresponds to the information you retrieved.
+
+#If you still have time, you can go visual: give a look to the library leaflet and plot some information about the bands. A snippet of code is provided below.
+#singer_locations %>%  
+#  leaflet()  %>%   
+#  addTiles() %>%  
+ # addCircles(popup = ~artist_name)
+```
+
+```{r R INSTRUCTIONS FOR FUNCTIONS}
+# 2. Writing functions
+#Pick one:
+
+#Write one (or more) functions that do something useful to pieces of the Gapminder or Singer data. It is logical to think about computing on the mini-data frames corresponding to the data for each specific country, location, year, band, album, … This would pair well with the prompt below about working with a nested data frame, as you could apply your function there.
+#Make it something you can’t easily do with built-in functions. Make it something that’s not trivial to do with the simple dplyr verbs. The linear regression function presented here is a good starting point. You could generalize that to do quadratic regression (include a squared term) or use robust regression, using MASS::rlm() or robustbase::lmrob().
+
+
+#If you plan to complete the homework where we build an R package, write a couple of experimental functions exploring some functionality that is useful to you in real life and that might form the basis of your personal package.
+
+
+```
+
+```{r multiple linear regression using lm}
+
+# lm(y ~ x1 + x2, data = data)
+lm(lifeExp ~ gdpPercap + pop , data = gapminder)
+
+```
+
+```{r}
+function(001 ~ 002 + 003) 001, 002, 003
+
+map2(a, b, ~ .x * .y)
+
+```
+
+
+
+# MODE FUNCTIONS 
+
+
+
+```{r not anything}
+levels(gapminder$continent)
+countcountry <- as.vector(tabulate(gapminder$continent))
+max(countcountry)
+```
+
+
+
+```{r with hard coding}
+
+DF <- gapminder %>% 
+  group_by(continent) %>% 
+  summarise(count = length(continent)) %>%
+  .[which.max(.$count),]
+
+DF
+```
+
+
+```{r trying to make a function}
+
+data_name <- gapminder
+column_name <- gapminder$continent
+
+data_name %>% 
+  group_by(data_name) %>% 
+  summarise(count = length(column_name)) %>%
+  .[which.max(.$count),]
+
+```
+
+
+```{r function but returns something weird, issue is with summarise}
+
+modefunction <- function(dataset, col_name){
+  require("dplyr")
+  dataset %>%
+    group_by_(col_name) %>%
+    summarise(count = length(col_name)) %>% 
+  .[which.max(.$count),] -> most
+  return(most)
+}
+
+
+modefunction(gapminder, gapminder$continent)
+```
+
+```{r none of this is working}
+
+gapgroup <- gapminder %>% 
+  group_by(continent)
+
+summarise(gapminder, count = length(continent))
+
+```
+
+```{r trying to take grouping out of function}
+
+
+modefunction <- function(dataset){
+  require("dplyr")
+  dataset %>% 
+    summarise(count = length(dataset)) %>%
+    .[which.max(.$count),] -> most
+  return(most)
+}
+
+
+modefunction(gapgroup)
+```
+
+```{r}
+contin <- gapminder$continent
+```
+
+
+# Quadratic Regression
+- function: 
+
+- quadratic regression based on lm 
+y = ax2 + bx + c,
+where a is not 0
+- cubic regression
+- linear regression `lm()`
+- select maximum r squared from the 3
+
+```{r bivariate least-squares regression}
+lm(lifeExp ~ pop + gdpPercap, data = gapminder)
+```
+
+
+```{r set up the data: add gdpPercap squared}
+
+gapminder_reg <- gapminder %>% 
+  mutate(gdpPercap2 = gdpPercap^2) %>% 
+  mutate(gdpPercap3 = gdpPercap^3) %>% 
+  mutate(pop2 = pop^2)
+
+gapminder_reg
+```
+
+First, I'll run a least-squares linear regression to see what that looks like. Least-squares, quadratic, and cubic regression are all forms of linear regression, and I'll refer to them as least-squares, quadratic, and cubic from here on out. 
+
+```{r least-squares regression}
+lm(lifeExp ~ gdpPercap, data = gapminder_reg) %>% 
+  summary()
+```
+
+This has an adjusted R-squared value of .34. Not terrible, not great. Maybe quadratic regression will have a higher R-squared?
+
+I'm going to try modifying the least-squares regression equation built into R to see what that looks like. 
+
+```{r quadratic regression, attempt 1}
+
+#quadratic regression using ^2 for squared term
+lm(lifeExp ~ gdpPercap + (gdpPercap^2), data = gapminder_reg) %>% 
+  summary()
+```
+
+From `summary()`, I can see that the equation is still only recognizing gdpPercap as the sole explanatory variable.
+
+Good thing I was able to go back in time and add a column to the data frame for GDP per capita squared! 
+
+```{r quadratic regression}
+lm(lifeExp ~ gdpPercap + gdpPercap2, data = gapminder_reg) %>% 
+  summary()
+```
+
+As well as a column for GDP per capita cubed. 
+```{r cubic regression}
+lm(lifeExp ~ gdpPercap + gdpPercap3, data = gapminder_reg) %>% 
+  summary()
+```
+
+
+
+
+```{r ideally this would work somehow? but probably wont}
+lm(independent ~ dependent + dependent^2, data = data)
+
+```
+
+
+temperature conversion function from [here](https://swcarpentry.github.io/r-novice-inflammation/02-func-R/)
+```{r}
+
+funct <- function(tempf) {
+  tempK <- ((tempf - 32) * (5/9)) + 273.15
+  return(tempK)
+}
+
+funct(50)
+```
+
+
+
+# Option 3: Working with candy dataset
+
+### examining the raw data
+First, I need to read the .csv file into R Studio so I can take a look at it. 
+```{r uploading candy survey results .csv}
+candysurvey <- read.csv("candy.csv", na.strings = "")
+```
+
+```{r}
+head(candysurvey)
+```
+
+```{r look at all column names}
+
+names(candysurvey)  %>% 
+  kable()
+
+```
+
+Ok, we have 124 columns-- clearly too many to work with. 
+
+Based on the column titles and responses from the first few columns, it seems like the columns mostly contain either opinions about candy (or other halloween trick-or-treating offerables), degrees of separation from various celebrities/historical figures, the answers to open-ended questions, and c couple "demographic" columns-- age and trick or treating behavior. 
+
+
+Is the response rate of candy types correlated with number of positive or negative responses? 
+
+### wrangling 
+
+
+I'm going to set the candy data into a tibble, and use `levels()` to check out the possible entries in the candy column. 
+
+I used `str()` to look at the data types for each column, but the output is way too long to include in the code. All the columns are factors. Conveniently, the candy columns all begin with "X"
+
+```{r make tibble from Candy df}
+candysurvtib <- as.tibble(candysurvey) 
+
+```
+
+now, I'll use `grepl()` to select only column names that contain "X"
+
+```{r use grepl to get candy columns only}
+candyX <- candysurvtib[ , grepl( "X" , names( candysurvtib ) ) ]
+
+# COUNT NUMBER OF COLUMNS (candyX)
+```
+
+
+
+```{r gather candy type into a column}
+candytidy <- gather(candyX)
+
+head(candytidy)
+```
+
+
+
+
+```{r}
+
+candytidy %>% 
+  group_by(key) %>% 
+  summarise()
+
+
+#spread(candytidy, key = "key", value = "value")
+```
+
+
+
+
+Looks like we still have a ton of columns! Let's get that down even more by selecting only my favorites.
+I like some pretty weird candy, so I think some of these might have a lot of despair values!
+
+At this stage, I'd also like to change the NA values to something I can work with. 
+
+```{r creating table of desired candy}
+candy <- candyX %>% 
+  select(c(butterfingers = X.Butterfinger.,
+           licorice = X.Licorice.,
+           peanutcups = X.Reese?..s.Peanut.Butter.Cups.,
+           skittles = X.Skittles.,
+           necco = X.Necco.Wafers.,
+           candycorn = X.Candy.Corn.)) 
+
+head(candy) %>% 
+  kable()
+
+```
+
+
+
+```{r check levels of column in candy table}
+levels(candy$butterfingers)
+
+```
+
+Looks like the possible levels for candy columns are "DESPAIR" and "JOY", as well as some NA values. I'd like to change the NA values to something I can work with. 
+
+
+```{r}
+candy[] <- lapply(candy, as.character)
+candy[is.na(candy)] <- "NoResponse"
+
+```
+
+```{r}
+head(candy)
+```
+
+
+
+### exploring/analyzing 
+
+
+```{r}
+spread(candy, key = "butterfingers", value = "")
+```
+
+
+
+Create untidy table with: 
+
+candy | joy | despair | - |
+------|-----|---------|---|
+candy type | count | count | count
+candy type | count | count | count
+
+
+
+
+```{r}
+candycount <- candy %>%
+  group_by(candytype)
+  count()
+
+candycount
+```
+
+
+```{r butterfingers bar graph}
+candy %>% 
+  ggplot(aes(butterfingers)) +
+  geom_bar()
+```
+
+
+```{r}
+chisq.test(candy)
+```
+
+### more?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Credits
+
+[tabulate](https://stackoverflow.com/questions/1923273/counting-the-number-of-elements-with-the-values-of-x-in-a-vector)
+[summarize](https://stackoverflow.com/questions/26114525/how-to-count-how-many-values-per-level-in-a-given-factor)
+[select rows with max count](https://stackoverflow.com/questions/19449615/how-to-extract-the-row-with-min-or-max-values)
+
+[using column names in functions](https://www.brodrigues.co/blog/2016-07-18-data-frame-columns-as-arguments-to-dplyr-functions/)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
