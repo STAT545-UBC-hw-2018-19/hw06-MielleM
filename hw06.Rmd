@@ -14,280 +14,83 @@ library(kableExtra)
 ```
 
 
-# singer data
-```{r INSTRUCTIONS for SINGER}
-# 4. Work with the singer data
-#The singer_location dataframe in the singer package contains geographical information stored in two different formats: 1. as a (dirty!) variable named city; 2. as a latitude / longitude pair (stored in latitude, longitude respectively). The function revgeocode from the ggmap library allows you to retrieve some information for a pair (vector) of longitude, latitude (warning: notice the order in which you need to pass lat and long). Read its manual page.
-
-U#se purrr to map latitude and longitude into human readable information on the band’s origin places. Notice that revgeocode(... , output = "more") outputs a dataframe, while revgeocode(... , output = "address") returns a string: you have the option of dealing with nested dataframes.
-#You will need to pay attention to two things:
-#Not all of the track have a latitude and longitude: what can we do with the missing information? (filtering, …)
-#Not all of the time we make a research through revgeocode() we get a result. What can we do to avoid those errors to bite us? (look at possibly() in purrr…)
-#Try to check wether the place in city corresponds to the information you retrieved.
-
-#If you still have time, you can go visual: give a look to the library leaflet and plot some information about the bands. A snippet of code is provided below.
-#singer_locations %>%  
-#  leaflet()  %>%   
-#  addTiles() %>%  
- # addCircles(popup = ~artist_name)
-```
-
-```{r R INSTRUCTIONS FOR FUNCTIONS}
-# 2. Writing functions
-#Pick one:
-
-#Write one (or more) functions that do something useful to pieces of the Gapminder or Singer data. It is logical to think about computing on the mini-data frames corresponding to the data for each specific country, location, year, band, album, … This would pair well with the prompt below about working with a nested data frame, as you could apply your function there.
-#Make it something you can’t easily do with built-in functions. Make it something that’s not trivial to do with the simple dplyr verbs. The linear regression function presented here is a good starting point. You could generalize that to do quadratic regression (include a squared term) or use robust regression, using MASS::rlm() or robustbase::lmrob().
-
-
-#If you plan to complete the homework where we build an R package, write a couple of experimental functions exploring some functionality that is useful to you in real life and that might form the basis of your personal package.
-
-
-```
-
-```{r multiple linear regression using lm}
-
-# lm(y ~ x1 + x2, data = data)
-lm(lifeExp ~ gdpPercap + pop , data = gapminder)
-
-```
-
-```{r}
-function(001 ~ 002 + 003) 001, 002, 003
-
-map2(a, b, ~ .x * .y)
-
-```
-
-
-
 # MODE FUNCTIONS 
 
+Unlike `mean()`, `median()`, `max()`, and `min()`, R has no built-in function to return the mode(s) of a dataset.  
 
+I can return the mode by hard coding everything, but this doesn't help me with data down the line. 
 
-```{r not anything}
-levels(gapminder$continent)
-countcountry <- as.vector(tabulate(gapminder$continent))
-max(countcountry)
-```
-
-
-
-```{r with hard coding}
+```{r mode with hard coding}
 # Sanity check: works with min as well 
-DF <- gapminder %>% 
+modeDF <- gapminder %>% 
   group_by(continent) %>% 
   summarise(count = length(continent)) %>%
   .[which.max(.$count),]
 
-DF
+modeDF
 ```
 
 
-```{r trying to make a function}
+So, I wrote a function that will return the mode or modes for a grouped factor.
 
-data_name <- gapminder
-column_name <- gapminder$continent
+I'll use the gapminder dataset we've been working with in class to make this work. 
 
-data_name %>% 
-  group_by(data_name) %>% 
-  summarise(count = length(column_name)) %>%
-  .[which.max(.$count),]
+The "continent" data has a clear mode, which is Africa. This is what I used to develop my mode function. I'm going to create a new dataframe that is just a factor of continents. 
 
+```{r set up continent data}
+cont<- select(gapminder, continent) %>% 
+ group_by(continent)
+
+# check that new data frame contains all levels 
+levels(cont$continent)
 ```
 
+I'll create a test data set from the "country". Each country appears the same number of times, so this will be a good test to see if my mode function can handle multiple modes. 
 
-```{r function but returns something weird, issue is with summarise}
-
-modefunction <- function(dataset, col_name){
-  require("dplyr")
-  dataset %>%
-    group_by_(col_name) %>%
-    summarise(count = length(col_name)) %>% 
-  .[which.max(.$count),] -> most
-  return(most)
-}
-
-
-modefunction(gapminder, gapminder$continent)
-```
 ```{r set up country data as a test vector input}
+
 countrytest<- select(gapminder, country) %>% 
-  as.vector() %>% 
   group_by(country)
 
-countrytest
+# check that new data frame contains all levels
+str(countrytest$country)
 ```
 
-```{r set up data as a vector input}
-cont<- select(gapminder, continent) %>% 
-  as.vector() %>% 
-  group_by(continent)
+Here is my mode function
 
-cont
-```
-
-```{r}
-
-# counts all categories, returns all rows with maximum count value
-# tested with min
-
-count(cont) %>%
-  as.data.frame() %>% 
-  filter(n == max(n))
-
-```
-
-```{r}
+```{r MODE FUNCTION }
+#input: requires data frame with one factor
+#output: data frame with factor of modes
 
 modefunction <- function(dataset){
   require("dplyr")
   count(dataset) %>%
   as.data.frame() %>% 
   filter(n == max(n)) %>% 
-  select(-n) -> most
-  return(most)
+  select(-n) %>% 
+  droplevels() %>% 
+  print.data.frame(., max = 15) -> mode
+  return(mode)
 }
+```
 
 
+And here it is, applied to the continent data. It correctly returns the mode! 
+
+```{r}
 modefunction(cont)
 ```
 
-
-```{r doesn't work}
-# returns the count of the mode
-count(cont) %>%
-  as.data.frame() %>% 
-  select(max(n)) %>% 
-  max() %>% 
-  as.numeric()
-
-
+Now let's try with the country data. Looks like it works with multiple modes too! 
+```{r test multimodal data}
+(modefunction(countrytest))
 ```
 
-```{r not the one}
+Because there are so many countries, I can't just visually check to see that the output of `modefunction(countrytest)` is the same. 
 
-# counts each type and adds column n with count, then converts to data frame, then sort descending
-count(cont) %>% 
-  as.data.frame() %>%
-  as.numeric(n) %>% 
-  .[order(., -n),]
+ 
 
-  #was working but now isn't, not sure what got changed  .[order(-n),]
-
-# mtcars[order(mpg, -cyl),] 
-  
-# .[with(.,order(-n),)]
-
-#[order(byDayTime$count),][1:10,]
-
-# cont[order(-n),]
-
-# summarise(cont, count = length(n)) %>%
-#   cont[which.max(n),]
-
-```
-
-```{r trying to take grouping out of function but always returns first entry}
-
-gapgroup <- gapminder %>% 
-  group_by(continent)
-
-modefunction <- function(dataset){
-  require("dplyr")
-    summarise(dataset, count = length(dataset)) %>%
-    .[which.max(.$count),] -> most
-  return(most)
-}
-
-
-modefunction(gapgroup)
-```
-
-```{r}
-contin <- as.factor(gapminder$continent)
-```
-
-
-
-
-# Quadratic Regression
-- function: 
-
-- quadratic regression based on lm 
-y = ax2 + bx + c,
-where a is not 0
-- cubic regression
-- linear regression `lm()`
-- select maximum r squared from the 3
-
-```{r bivariate least-squares regression}
-lm(lifeExp ~ pop + gdpPercap, data = gapminder)
-```
-
-
-```{r set up the data: add gdpPercap squared}
-
-gapminder_reg <- gapminder %>% 
-  mutate(gdpPercap2 = gdpPercap^2) %>% 
-  mutate(gdpPercap3 = gdpPercap^3) %>% 
-  mutate(pop2 = pop^2)
-
-gapminder_reg
-```
-
-First, I'll run a least-squares linear regression to see what that looks like. Least-squares, quadratic, and cubic regression are all forms of linear regression, and I'll refer to them as least-squares, quadratic, and cubic from here on out. 
-
-```{r least-squares regression}
-lm(lifeExp ~ gdpPercap, data = gapminder_reg) %>% 
-  summary()
-```
-
-This has an adjusted R-squared value of .34. Not terrible, not great. Maybe quadratic regression will have a higher R-squared?
-
-I'm going to try modifying the least-squares regression equation built into R to see what that looks like. 
-
-```{r quadratic regression, attempt 1}
-
-#quadratic regression using ^2 for squared term
-lm(lifeExp ~ gdpPercap + (gdpPercap^2), data = gapminder_reg) %>% 
-  summary()
-```
-
-From `summary()`, I can see that the equation is still only recognizing gdpPercap as the sole explanatory variable.
-
-Good thing I was able to go back in time and add a column to the data frame for GDP per capita squared! 
-
-```{r quadratic regression}
-lm(lifeExp ~ gdpPercap + gdpPercap2, data = gapminder_reg) %>% 
-  summary()
-```
-
-As well as a column for GDP per capita cubed. 
-```{r cubic regression}
-lm(lifeExp ~ gdpPercap + gdpPercap3, data = gapminder_reg) %>% 
-  summary()
-```
-
-
-
-
-```{r ideally this would work somehow? but probably wont}
-lm(independent ~ dependent + dependent^2, data = data)
-
-```
-
-
-temperature conversion function from [here](https://swcarpentry.github.io/r-novice-inflammation/02-func-R/)
-```{r}
-
-funct <- function(tempf) {
-  tempK <- ((tempf - 32) * (5/9)) + 273.15
-  return(tempK)
-}
-
-funct(50)
-```
+The [assignment](http://stat545.com/Classroom/assignments/hw06/hw06.html) says not to create a function that is simple with `dplyr` verbs-- you'll notice that that's exactly what my mean function is! I had no intention of doing this using `dplyr`, but after many hours of experimenting it became pretty clear that this was by far the cleanest and most functional way that I could find to set up the mode function, especially in a way that would return multiple modes. 
 
 
 
@@ -299,9 +102,6 @@ First, I need to read the .csv file into R Studio so I can take a look at it.
 candysurvey <- read.csv("candy.csv", na.strings = "")
 ```
 
-```{r}
-head(candysurvey)
-```
 
 ```{r look at all column names}
 
@@ -343,7 +143,6 @@ candy | opinion | count |
 ------|---------|-------
 candy | JOY | count
 candy | DESPAIR | count
-candy | DESPAIR | count 
 candy | NA | count
 
 4) Finally, in order to plot, I'll `spread` opinion column to give me a table I can use to make a scatter plot. 
@@ -354,15 +153,16 @@ candy type | count | count | count
 candy type | count | count | count
 I'm going to set the candy data into a tibble, and use `levels()` to check out the possible entries in the candy column. 
 
-I used `str()` to look at the data types for each column, but the output is way too long to include in the code. All the columns are factors. Conveniently, the candy columns all begin with "X"
 
-```{r make tibble from Candy df}
-candysurvtib <- as.tibble(candysurvey) 
-```
+I used `str()` to look at the data types for each column, but the output is way too long to include in the code. All the columns are factors. Conveniently, the candy columns all begin with "X"
 
 Now, I'll use `grepl()` to select only column names that contain "X"
 
 ```{r use grepl to get candy columns only}
+#convert to tibble
+candysurvtib <- as.tibble(candysurvey)
+
+#select desired names 
 Xcolumns <- candysurvtib[ , grepl( "X", names( candysurvtib ) ) ]
 
 ```
@@ -389,95 +189,114 @@ candyX[is.na(candyX)] <- "NoResponse"
 ```{r gather candy type into a column}
 candytidy <- gather(candyX)
 
-head(candytidy)
+head(candytidy) %>% 
+  kable()
 ```
 
 
 ```{r create untidy table}
-candyuntidy <- gather(candytidy) %>% 
+candyuntidycount <- gather(candytidy) %>% 
   group_by(key, value) %>% 
   summarise(count = n()) %>%
   spread(key = "value", value = "count")
 
-head(candyuntidy)
+
+head(candyuntidycount) %>% 
+  kable()
 ```
 
+For my final wrangle, I'm going to convert joy, despair, and noresponse into proportions by dividing them out of 5,658 (the total)
 
-```{r Scatter plot of candy}
-candyuntidy %>% 
-  ggplot() +
-  geom_point(aes(NoResponse, DESPAIR))
+```{r}
+candyuntidy<- candyuntidycount %>% 
+  mutate(DESPAIR = DESPAIR / 5658) %>% 
+  mutate(JOY = JOY / 5658) %>% 
+  mutate(NoResponse = NoResponse / 5658)
+
+head(candyuntidy) %>% 
+  kable()
 ```
-
-
 
 
 ### exploring/analyzing 
 
-Currently, the data structure approximates this table below: 
+I'm going to make a scatter plot of Despair responses against No Response to see if they are correlated. 
 
-candy | candy | question | question |  
-------|-------|----------|----------|
-opinion | opinion | response | response
-opinion | opinion | response | response
+```{r scatter plot: no response vs. despair}
 
-First, I'll need to make a "tidy" table of the data, where each row corresponds to one entry. 
+# scatter plot: noresponse vs. despair
+ggplot(candyuntidy, aes(NoResponse, DESPAIR)) +
+   geom_smooth(color = "dark grey") +
+  geom_point(color = "darkcyan") + 
+  ggtitle("Candy opinions: Does lack of responses predict despair responses?") +
+  xlab("No response") +
+  ylab("Despair") +
+  theme_light() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, color = "grey50")) +
+  theme(axis.text.y = element_text(color = "grey50")) +
+  theme(panel.grid.major.x= element_blank(),
+        panel.grid.minor.x= element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks = element_blank()) +
+  theme(text=element_text(size = 10, family = "Arial", color = "grey30"))
+```
 
-candy | opinion
-------|-------
-candy | JOY 
-candy | DESPAIR
-candy | DESPAIR 
-candy | NA
+It's a bit messy, but there does seem to be some positive correlation between no response and despair responses. 
 
-Then, I'll have to "untidy" this table by collapsing identical candy opinions and adding a "count" field. 
-
-candy | opinion | count |
-------|---------|-------
-candy | JOY | count
-candy | DESPAIR | count
-candy | DESPAIR | count 
-candy | NA | count
-
-Finally, in order to plot, I'll `spread` opinion column to give me a table I can use to make a scatter plot. 
-
-candy | joy | despair | - |
-------|-----|---------|---
-candy type | count | count | count
-candy type | count | count | count
+I'll check joy responses as well. 
 
 
+```{r scatter plot: no response vs. joy}
+
+#scatter plot, no response vs. joy 
+ggplot(candyuntidy, aes(NoResponse, JOY)) +
+   geom_smooth(color = "dark grey") +
+  geom_point(color = "tomato3") + 
+  ggtitle("Candy opinions: Does lack of responses predict joy responses?") +
+  xlab("No response") +
+  ylab("Joy") +
+  theme_light() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, color = "grey50")) +
+  theme(axis.text.y = element_text(color = "grey50")) +
+  theme(panel.grid.major.x= element_blank(),
+        panel.grid.minor.x= element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.border = element_blank(),
+        axis.ticks = element_blank()) +
+  theme(text=element_text(size = 10, family = "Arial", color = "grey30"))
+```
+
+Unsurprisingly, joy appears to be slightly negatively correlated with no responses. 
 
 
-
-### more?
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Overall, there does appear to be a slight correlation between lack of responses and despair responses like I initially hypothesized. 
 
 
 
 # Credits
 
+I didn't end up applying all these resources to the code you see here, but used all of them somewhere in the development process. 
+
 [tabulate](https://stackoverflow.com/questions/1923273/counting-the-number-of-elements-with-the-values-of-x-in-a-vector)
-[summarize](https://stackoverflow.com/questions/26114525/how-to-count-how-many-values-per-level-in-a-given-factor)
+
 [select rows with max count](https://stackoverflow.com/questions/19449615/how-to-extract-the-row-with-min-or-max-values)
 
 [using column names in functions](https://www.brodrigues.co/blog/2016-07-18-data-frame-columns-as-arguments-to-dplyr-functions/)
+
 [summarise](https://www.rdocumentation.org/packages/dplyr/versions/0.7.7/topics/summarise)
 
+[print.data.frame](https://stat.ethz.ch/R-manual/R-devel/library/base/html/print.dataframe.html)
+
+[candy data](https://github.com/jennybc/candy/blob/master/data-raw/CANDY-HIERARCHY-2015%20SURVEY-Responses.csv)
+
+[subsetting based on part of column name](https://stackoverflow.com/questions/18587334/subset-data-to-contain-only-columns-whose-names-match-a-condition)
+
+[dplyr refresher](http://genomicsclass.github.io/book/pages/dplyr_tutorial.html)
+
+[R colors](http://sape.inf.usi.ch/quick-reference/ggplot2/colour)
 
 
 
