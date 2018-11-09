@@ -35,5 +35,9 @@ This repository holds the results of [my](https://github.com/MielleM) experiment
 <td><a href="https://github.com/STAT545-UBC-students/hw06-MielleM/blob/master/hw06.Rmd">hw06.Rmd</a></td>
 <td>Rmd used to generate .md, just for reference + storage.</td>
 </tr>
+<tr class="odd">
+<td><a href="https://github.com/STAT545-UBC-students/hw06-MielleM/blob/master/candy.csv">candy.csv</a></td>
+<td>Candy csv data, if you want to run the candy scripts yourself.</td>
+</tr>
 </tbody>
 </table>
