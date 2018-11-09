@@ -199,11 +199,14 @@ candyuntidycount <- gather(candytidy) %>%
   group_by(key, value) %>% 
   summarise(count = n()) %>%
   spread(key = "value", value = "count")
-
+```
+```{r}
 
 head(candyuntidycount) %>% 
   kable()
 ```
+
+
 
 For my final wrangle, I'm going to convert joy, despair, and noresponse into proportions by dividing them out of 5,658 (the total)
 
